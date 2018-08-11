@@ -1,0 +1,18 @@
+--@include mech/examples/skeleton.txt
+--@name mech/mechlibtest
+
+if SERVER then
+    local skel = require("mech/examples/skeleton.txt")
+
+    hook.add("think", "asd", function ()
+        skel.neck:setAngles(chip():localToWorldAngles(Angle(0,-20*math.sin(timer.systime()),0)))        
+        skel.spine:update(-chip():getForward(),chip():localToWorldAngles(Angle(3*math.cos(timer.systime()*5),40*math.sin(timer.systime()),0)))          
+        skel.tail:update(skel.spine.tail:localToWorld(Vector(-1,-0.3*math.sin(timer.systime()),0):getNormalized())-skel.spine.tail:getPos(), skel.spine.tail:localToWorldAngles(Angle(0,40*math.sin(timer.systime()),0)))
+        
+        skel.fl:update(chip():localToWorld(Vector( -1,15,-40)), chip())
+        skel.fr:update(chip():localToWorld(Vector(1,-15,-40)), chip())
+        skel.rl:update(chip():localToWorld(Vector( -50,20,-40)), chip())
+        skel.rr:update(chip():localToWorld(Vector( -50,-20,-40)), chip())
+    end)
+end
+

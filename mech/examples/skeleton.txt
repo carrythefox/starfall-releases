@@ -1,0 +1,26 @@
+--@include mech/lib/skeletonlib.txt
+--@name mech/skeleton
+
+if SERVER then
+    require("mech/lib/skeletonlib.txt")
+    
+    local skel = Skeleton(chip())
+    skel:add("neck", chip())
+    
+    local n = 4
+    local n2 = 4
+    local len = 20
+    skel:addChain("spine", n, len, skel.neck, Vector())
+    skel:addChain("tail", n2, len, skel.spine.tail, Vector())
+    
+    local l1 = 20
+    local l2 = 25
+    local l3 = 15
+    local width = 15
+    skel:addLeg2("fl", skel.neck, Vector(0, width, -5), Angle(), l1, l2)
+    skel:addLeg2("fr", skel.neck, Vector(0,-width, -5), Angle(), l1, l2)
+    skel:addLeg3("rl", skel.spine.tail, Vector(0, width, -10), Angle(), l1, l2, l3)
+    skel:addLeg3("rr", skel.spine.tail, Vector(0,-width, -10), Angle(), l1, l2, l3)
+    
+    return skel
+end

@@ -1,0 +1,162 @@
+--@include mech/lib/class.txt
+--@include mech/lib/bezier.txt
+--@include mech/lib/iklib.txt
+
+--@name mech/lib/skeletonlib
+
+if SERVER then
+    require("mech/lib/class.txt")
+    require("mech/lib/bezier.txt")
+    local bezier3f = bezier.bezier3f
+    
+    require("mech/lib/iklib.txt")
+    local splineIk = ik.splineIk_falsi
+    local ik2 = ik.ik2
+    local ik3 = ik.ik3
+    local ikbezier = ik.bezierEx
+    
+    local function createBone(parent, child)
+        local bonePos = (parent:getPos()+child:getPos())/2
+        local boneAng = (parent:getPos()-child:getPos()):getAngle()
+        local boneLength = (parent:getPos()-child:getPos()):getLength()
+        local boneScale = Vector(boneLength/12, 0.2, 0.2)
+        local bone = holograms.create(bonePos, boneAng, "models/holograms/cube.mdl", boneScale)
+        bone:setColor(Color(50,50,50))
+        bone:setParent(parent)
+    end
+    
+    function Bone(parent, pos, ang, model, scale, showBone, showJoint)
+        pos = pos or Vector()
+        ang = ang or Angle()
+        model = model or "models/holograms/cube.mdl"
+        scale = scale or Vector(0.3, 0.3, 0.3)
+        showBone = showBone or showBone==nil
+        showJoint = showJoint or showJoint==nil
+        
+        local self
+        
+        if parent then
+            self = holograms.create(parent:localToWorld(pos), parent:localToWorldAngles(ang), model, scale)
+            if showBone then createBone(parent, self) end
+        else
+            self = holograms.create(pos, ang, model, scale)
+        end
+        
+        self:setParent(parent)
+        
+        
+        if !showJoint then self:setColor(Color(0,0,0,0)) end
+        
+        return self
+    end
+    
+    Leg2 = Class()
+    
+    function Leg2:constructor(parent, pos, ang, l1, l2, model, scale, showBone, showJoint)
+        self.parent = parent
+        
+        self.l1 = l1
+        self.l2 = l2
+        
+        self.shoulder = Bone(parent, pos, ang, model, scale, showBone, showJoint)
+        self.elbow = Bone(self.shoulder, Vector(0,0,l1), Angle(), model, scale, showBone, showJoint)
+        self.wrist = Bone(self.elbow, Vector(0,0,l2), Angle(), model, scale, showBone, showJoint)
+    end
+    
+    function Leg2:update(pos, base)
+        base = base or self.parent
+        ik2(base, self.shoulder, self.elbow, self.wrist, self.l1, self.l2, pos)
+    end
+    
+    Leg3 = Class()
+    
+    function Leg3:constructor(parent, pos, ang, l1, l2, l3, model, scale, showBone, showJoint)
+        self.parent = parent
+        
+        self.l1 = l1
+        self.l2 = l2
+        self.l3 = l3
+        
+        self.hip = Bone(parent, pos, ang, model, scale, showBone, showJoint)
+        self.knee = Bone(self.hip, Vector(0,0,l1), Angle(), model, scale, showBone, showJoint)
+        self.ankle = Bone(self.knee, Vector(0,0,l2), Angle(), model, scale, showBone, showJoint)
+        self.foot = Bone(self.ankle, Vector(0,0,l3), Angle(), model, scale, showBone, showJoint)
+    end
+    
+    function Leg3:update(pos, base)
+        base = base or self.parent
+        ik3(base, self.hip, self.knee, self.ankle, self.foot, self.l1, self.l2, self.l3, pos)
+    end
+    
+    Bonechain = Class()
+    
+    function Bonechain:constructor(n, len, parent, pos, ang, model, scale, showBone, showJoint)
+        self.n = n
+        self.len = len
+        self.parent = parent
+        self.joints = {}
+        
+        local joints = self.joints
+        
+        joints[1] = Bone(parent, pos, ang, model, scale, showBone, showJoint)
+        
+        for i=2, n do
+            joints[i] = Bone(joints[i-1], Vector(-len, 0, 0), Angle(), model, scale, showBone, showJoint)
+        end
+        
+        self.tail = self.joints[#self.joints]
+    end
+    
+    function Bonechain:update(dir, tailAng, eps1, eps2)
+        local joints = self.joints
+        local tail = joints[#joints]
+    
+        tail:setAngles(tailAng)
+    
+        local parent = self.parent
+        local d1 = -parent:getForward()
+        local d2 = tail:getForward()
+        
+        ikbezier(joints, parent:getPos(), dir, d1, d2, self.len, eps1, eps2)
+    end
+    
+    Skeleton = Class()
+    
+    function Skeleton:constructor(origin, showBones, showJoints)
+        self.origin = origin
+        self.__showJoints = showJoints or showJoints==nil
+        self.__showBones = showBones or showBones==nil
+        
+        self.__jointModel = "models/holograms/cube.mdl"
+        self.__jointScale = Vector(0.3, 0.3, 0.3)
+    end
+    
+    function Skeleton:add(name, parent, pos, ang)
+        self[name] = Bone(parent, pos, ang, self.__jointModel, self.__jointScale, self.__showBones, self.__showJoints)        
+    end
+    
+    function Skeleton:addChain(name, n, len, parent, pos, ang)
+        self[name] = Bonechain(n, len, parent, pos, ang, self.__jointModel, self.__jointScale, self.__showBones, self.__showJoints)
+    end
+    
+    function Skeleton:addLeg2(name, parent, pos, ang, l1, l2)
+        self[name] = Leg2(parent, pos, ang, l1, l2, self.__jointModel, self.__jointScale, self.__showBones, self.__showJoints)
+    end
+    
+    function Skeleton:addLeg3(name, parent, pos, ang, l1, l2, l3)
+        self[name] = Leg3(parent, pos, ang, l1, l2, l3, self.__jointModel, self.__jointScale, self.__showBones, self.__showJoints)
+    end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+

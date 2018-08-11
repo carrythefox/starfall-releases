@@ -1,0 +1,95 @@
+--@name mech/lib/cycle
+
+--@include mech/lib/class.txt
+
+require("mech/lib/class.txt")
+
+Cycle = Class()
+Cycle.Parked = 0
+Cycle.Unparking = 1
+Cycle.Unparked = 2
+Cycle.Parking = 3
+
+function Cycle:constructor()
+    self.__counter = 0
+    self.__offsets = {}
+    self.__status = {}
+    self.__previousPos = {}
+end
+
+function Cycle:addCounter(name, offset)
+    self.__offsets[name] = offset
+    self[name] = 0
+    self.__previousPos[name] = 0
+    self.__status[name] = Cycle.Parked
+end
+
+function Cycle:unpark(name)
+    if self.__status[name] == Cycle.Parked then
+        self.__status[name] = Cycle.Unparking
+    end
+end
+
+function Cycle:park(name)
+    if self.__status[name] == Cycle.Unparked then
+        self.__status[name] = Cycle.Parking
+    end
+end
+
+function Cycle:parkAll()
+    for name, status in pairs(self.__status) do
+        if status == Cycle.Unparked then self.__status[name] = Cycle.Parking end
+    end
+end
+
+function Cycle:unparkAll()
+    for name, status in pairs(self.__status) do
+        if status == Cycle.Parked then self.__status[name] = Cycle.Unparking end
+    end
+end
+
+function Cycle:cycle(delta)
+    self.__counter = (self.__counter + delta)%1
+    
+    for name, offset in pairs(self.__offsets) do
+        local current = (self.__counter+offset)%1
+        local previous = self.__previousPos[name]
+
+        if self.__status[name] == Cycle.Unparked then
+            self[name] = current
+        elseif self.__status[name] == Cycle.Parking then
+            if previous > current then
+                self[name] = 0
+                self.__status[name] = Cycle.Parked
+            else
+                self[name] = current
+            end
+        elseif self.__status[name] == Cycle.Unparking then
+            if previous > current then
+                self[name] = current
+                self.__status[name] = Cycle.Unparked
+            end
+        end
+        
+        self.__previousPos[name] = current
+    end
+end
+
+if CLIENT and player() then
+    local c = Cycle()
+    
+    c:addCounter("fl", 0.5)
+    c:addCounter("fr", 0.75)
+    
+    
+    hook.add("think", "abc", function()
+        
+        
+        if player():keyDown(IN_KEY.USE) then c:parkAll()
+        elseif player():keyDown(IN_KEY.RELOAD) then c:unparkAll() end
+        
+        
+        c:cycle(0.001)
+        setName(""..c.fl..", "..c.__status["fl"].."\n"..c.fr..", "..c.__status["fr"])
+    end)
+end

@@ -1,0 +1,124 @@
+--@name mech/lib/iklib
+--@author Nimeji
+
+--@include mech/lib/bezier.txt
+
+if SERVER then
+    require("mech/lib/bezier.txt")
+
+    local function bearing(originpos, originangle, pos)
+        local pos = worldToLocal(pos, Angle(), originpos, originangle)
+        return 180/math.pi*-math.atan2(pos.y, pos.x)
+    end
+
+    local function icos(A, B, C)
+        return math.acos((A*A+B*B-C*C)/(2*A*B))*180/math.pi
+    end
+ 
+    ik = {}
+
+    function ik.ik2(base, hhip, hknee, hfoot, l1, l2, target)
+        
+        local axis = base:worldToLocal(target-hhip:getPos()+base:getPos())
+        
+        local axisAngle = axis:getAngle():setR(-bearing(target, base:getAngles(), hhip:getPos()))
+        
+        local l3 = math.min(axis:getLength(), l1 + l2)
+        local axisQuat = quaternion(axisAngle) * quaternion.qRotation(Vector(0, 1, 0) * (90 - icos(l3, l1, l2)))
+        
+        hhip:setAngles(base:localToWorldAngles(quaternion.rotationEulerAngle(axisQuat)))
+        hknee:setAngles(hhip:localToWorldAngles(Angle(-icos(l2, l1, l3) + 180,0,0)))
+        hfoot:setAngles(base:getAngles())
+    end
+    
+    function ik.ik3(base, hhip, hknee, hankle, hfoot, l1, l2, l3, target)
+        local axis = base:worldToLocal(target-hhip:getPos()+base:getPos())
+        local axisAngle = axis:getAngle():setR(-bearing(target, base:getAngles(), hhip:getPos()))
+        
+        local l4 = math.min(axis:getLength(), l1 + l2 + l3)
+        local l5 = l1*l4/(l1+l3)
+        local l6 = l1*l2/(l1+l3)
+        
+        local axisQuat = quaternion(axisAngle) * quaternion.qRotation(Vector(0,1,0) * (90 + icos(l1, l5, l6)))
+    
+        local ang = icos(l1, l6, l5)
+        hhip:setAngles(base:localToWorldAngles(quaternion.rotationEulerAngle(axisQuat)))
+        hknee:setAngles(hhip:localToWorldAngles(Angle(ang+180,0,0)))
+        hankle:setAngles(hknee:localToWorldAngles(Angle(-ang+180,0,0)))
+        hfoot:setAngles(base:getAngles())
+    end
+
+    function ik.bezierEx(joints, p0, d0, d1, d2, len, eps1, eps2)
+        
+        eps1 = eps1 or 1
+        eps2 = eps2 or 0.1
+        
+        local dist = len*(#joints-1)
+        
+        local f = bezier.bezier3Ex(p0, d0, d1, d2, dist)
+        
+        local angles = {}
+        
+        while true do
+            local a = 0
+            local b = 1
+            local c = 1
+            
+            for i=1, #joints-1 do
+                local p0 = f(a)
+                            
+                while (p0-f(b)):getLength() < len do
+                    b = b + c
+                end
+                
+                local z1 = a
+                local z2 = b
+                local fz1 = (p0-f(z1)):getLength() - len
+                local fz2 = (p0-f(z2)):getLength() - len
+                local zs, fzs
+                
+                for j=0, 20 do
+                    zs = (fz1*z2 - fz2*z1) / (fz1 - fz2)  
+                    fzs = (p0-f(zs)):getLength() - len
+                    
+                    if -eps1 < fzs and fzs < eps1 then break end
+                    
+                    if fzs*fz1 > 0 then
+                        z1 = zs
+                        fz1 = fzs
+                    else
+                        z2 = zs
+                        fz2 = fzs
+                    end
+                end
+                
+                angles[i] = p0-f(zs)
+                
+                c = zs-a
+                a = zs
+                b = zs+c*2
+            end
+
+            if(math.abs(1-a) > eps2) then
+                dist = dist+dist*(a-1)
+                f = bezier.bezier3Ex(p0, d0, d1, d2, dist)
+            else
+                for i=1, #joints-1 do
+                    joints[i]:setAngles(angles[i]:getAngle())
+                end
+                break
+            end
+            
+        end
+        
+    end
+end
+
+
+
+
+
+
+
+
+

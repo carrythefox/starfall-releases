@@ -1,0 +1,56 @@
+--@name lib/bezier
+--@include lib/class.txt
+--@include lib/quadrature2.txt
+
+bezier = {}
+
+function bezier.bezier3(p0, p1, p2, p3, t)
+    return (1-t)^3*p0 + 3*(1-t)^2*t*p1 + 3*(1-t)*t*t*p2 + t*t*t*p3
+end
+
+function bezier.bezier3dt(p0, p1, p2, p3, t)
+    return 3*(1-t)^2*(p1-p0)+6*(1-t)*t*(p2-p1)+3*t^2*(p3-p2)
+end
+
+function bezier.bezier3f(p0, p1, p2, p3)
+   local a  = -p0+3*p1-3*p2+p3
+   local b  = 3*p0-6*p1+3*p2
+   local c = -3*p0+3*p1
+   local d = p0
+   
+   return function (t) return a*t^3+b*t^2+c*t+d end
+end
+
+function bezier.bezier3fdt(p0, p1, p2, p3, t)
+   local a  = -p0+3*p1-3*p2+p3
+   local b  = 3*p0-6*p1+3*p2
+   local c = -3*p0+3*p1
+
+    return function(t) return 3*a*t*t+2*b*t+c end
+end
+
+function bezier.bezier3f_3fdt(p0, p1, p2, p3)
+   local a  = -p0+3*p1-3*p2+p3
+   local b  = 3*p0-6*p1+3*p2
+   local c = -3*p0+3*p1
+   local d = p0
+   
+   return function (t) return a*t^3+b*t^2+c*t+d end, function (t) return 3*a*t^2+2*b*t+c end
+end
+    
+function bezier.bezier3_3dt(p0, p1, p2, p3, t)
+    local a  = -p0+3*p1-3*p2+p3
+    local b  = 3*p0-6*p1+3*p2
+    local c = -3*p0+3*p1
+    local d = p0
+   
+    return a*t*t*t+b*t*t+c*t+d, 3*a*t*t+2*b*t+c
+end
+
+function bezier.bezier3Ex(p0, d0, d1, d2, len)
+        local p3 = p0 + d0*len
+        local p1 = p0 + d1*len/2
+        local p2 = p3 + d2*len/2 
+        
+        return bezier.bezier3f(p0, p1, p2, p3)
+end
