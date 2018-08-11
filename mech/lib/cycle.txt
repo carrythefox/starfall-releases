@@ -75,21 +75,4 @@ function Cycle:cycle(delta)
     end
 end
 
-if CLIENT and player() then
-    local c = Cycle()
-    
-    c:addCounter("fl", 0.5)
-    c:addCounter("fr", 0.75)
-    
-    
-    hook.add("think", "abc", function()
-        
-        
-        if player():keyDown(IN_KEY.USE) then c:parkAll()
-        elseif player():keyDown(IN_KEY.RELOAD) then c:unparkAll() end
-        
-        
-        c:cycle(0.001)
-        setName(""..c.fl..", "..c.__status["fl"].."\n"..c.fr..", "..c.__status["fr"])
-    end)
-end
+
